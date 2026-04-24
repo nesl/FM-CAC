@@ -308,7 +308,7 @@ class ExperimentConfig:
         )
 
         _print_table(
-            "CARBON-AWARENESS (key paper insight)",
+            "CARBON-AWARENESS",
             [
                 ("CI when charging", "ci_when_charging", ".1f"),
                 ("CI when NOT charging", "ci_when_not_charging", ".1f"),
