@@ -1,0 +1,27 @@
+# Runtime outputs
+results/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.so
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Secrets / large artifacts
+*.pem
+*.key
+*.pt

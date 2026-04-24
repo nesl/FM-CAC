@@ -1,0 +1,90 @@
+# Hardware profile to load from env_config._TIER_REGISTRY.
+hardware_tier: heavy
+
+# Grid trace: 15-min (CI, price) time series.
+data:
+  csv_path: "data/CAISO_3year_15min.csv"
+  ghg_col:  "ghg_gCO2_per_kWh"
+  price_col: "price_usd_per_kWh"
+
+# Chronological train/val/test partition of the trace (must sum to 1.0).
+split:
+  train_ratio: 0.00
+  val_ratio:   0.30
+  test_ratio:  0.70
+
+episode:
+  horizon_T:   2880   # slots per episode (2880 * 15min = 30 days)
+  delta_hours: 0.25   # slot length (0.25 h = 15 min)
+  overlap:     0.0    # fraction of overlap between consecutive episodes
+
+battery:
+  B_cap_mwh: 18000.0  # nominal capacity (18 Wh)
+  soc_min:   0.20     # lower SoC bound (health + reserve)
+  soc_max:   0.80     # upper SoC bound
+  P_chg_mw:  20000.0  # charger power (20 W)
+  eta_chg:   0.90     # grid -> battery efficiency
+  V_nom:     3.7      # cell nominal voltage (V)
+  peukert_k: 1.05     # Peukert exponent for rate-dependent discharge
+
+# Hard QoS constraints: modes violating these are masked out.
+qos:
+  u_acc:   0.40       # min accuracy (mAP50-95)
+  u_lat_s: 0.100      # max per-inference latency (s)
+
+# Objective weights in the MPC reward: w_acc*U_acc - w_carb*(C_infer + C_charge)
+reward:
+  w_acc:          1.0
+  w_carb_infer:   1.0
+  w_carb_charge:  1.0
+
+workload:
+  infer_rate_ips: 1.0   # inferences per second
+  camera_fps:     30.0  # camera frame rate (unused by MPC objective)
+
+# Normalization of the reward terms for numerical stability.
+normalization:
+  normalize_costs:   true
+  power_utilization: 0.8   # measured average power / TDP
+
+safety:
+  invalid_action_penalty:    -10.0
+  terminate_on_invalid:      false
+  disallow_charge_when_full: true
+
+coverage:
+  use_coverage: false   # coverage-reward augmentation (unused in paper)
+
+# FM-CAC MPC + Sundial forecaster settings.
+mpc_policy:
+  gamma:                  0.998   # DP discount factor
+  carbon_scale:           5.0     # scales carbon term vs accuracy margin
+  deferred_weight:        0.3     # weight on deferred-discharge cost (0=free-discharge)
+  deferred_ci_percentile: 25.0    # CI percentile used as deferred recharge cost
+  n_battery_levels:       100     # discretization of battery state for DP
+
+  # SoC-margin penalty: steers away from the lower boundary.
+  soc_guard_threshold: 0.30
+  low_term_threshold:  0.40
+  guard_penalty_mult:  3.0
+
+  # Reactive safety net applied on top of the DP action.
+  reactive_charge_pct:    0.20   # force charge below this SoC in clean CI
+  reactive_discharge_pct: 0.75   # force discharge above this SoC in dirty CI
+
+  green_mode: false              # extra-conservative accuracy cap (ablation only)
+
+  # Sundial TSFM forecaster.
+  sundial_model:     "thuml/sundial-base-128m"
+  n_samples:         20          # probabilistic forecast samples per call
+  k_reforecast:      96          # re-query Sundial every K slots (24 h)
+  forecast_horizon:  96          # DP look-ahead = H slots (forecast returns 2H)
+  context_length:    1344        # max history fed to Sundial (14 days)
+  device:            "cuda"
+
+evaluation:
+  eval_episodes:    20           # test-split episodes per seed
+  trajectory_steps: 576          # steps plotted for detailed trajectory PNG
+
+# Multiple seeds for cross-seed mean/std; only affects forecast sampling.
+seeds: [2042, 3153, 4217]
