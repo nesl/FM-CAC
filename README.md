@@ -55,11 +55,15 @@ Per-episode CSVs and per-seed / cross-seed JSON summaries are written to
 The default carbon-intensity forecaster is
 [Sundial](https://huggingface.co/thuml/sundial-base-128m). The controller is
 agnostic to the choice of Time-Series Foundation Model: any probabilistic
-forecaster that exposes a `forecast(context, horizon)` interface returning
-the predictive mean and standard deviation can be substituted. To replace
-the default, provide a subclass of `SundialForecaster` in
-`main_sundial_mpc.py` and override `forecast` accordingly. No modifications
-to the remainder of the codebase are required.
+forecaster that exposes the following interface can be substituted. No
+modifications to the remainder of the codebase are required.
+
+```python
+class MyForecaster(SundialForecaster):
+    def forecast(self, context: np.ndarray, horizon: int):
+        ...
+        return mean, std   # both shape (horizon,)
+```
 
 ## License
 
